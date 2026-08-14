@@ -4,19 +4,15 @@ import plotly.express as px
 from streamlit_option_menu import option_menu
 
 # --- 1. ตั้งค่าหน้า Page และ สีองค์กร ---
-# สีองค์กรกระทรวงสาธารณสุข: #046938
 st.set_page_config(page_title="Executive Medical Workforce Dashboard", page_icon="🏥", layout="wide")
 
 # Custom CSS เพื่อปรับโทนสีและสร้าง KPI Card
 st.markdown("""
 <style>
-    /* ปรับสีตัวอักษรของ Header */
     h1, h2, h3, h4 {
         color: #046938 !important;
         font-family: 'Sarabun', sans-serif;
     }
-
-    /* สร้างสไตล์สำหรับ KPI Card */
     .kpi-container {
         display: flex;
         justify-content: space-between;
@@ -97,6 +93,8 @@ def load_and_prep_data():
         except: pass
 
     df_all = pd.concat(dfs, ignore_index=True)
+
+    # อัปเดต Map เปลี่ยนจาก "วุฒิที่ใช้ในตำแหน่ง" เป็น "วุฒิที่ใช้กับการเบิก พตส."
     rename_map = {
         'ตามจ.18 - \nactived_bed_name': 'จำนวนเตียง',
         'ตามจ.18 - เขต': 'เขตสุขภาพ',
@@ -106,7 +104,7 @@ def load_and_prep_data():
         'ตามจ.18 - \nประเภทหน่วยงาน': 'ประเภทหน่วยงาน',
         'ตามจ.18 - \nSAP': 'SAP_Level',
         'ตามจ.18 - \nservice_plan': 'Service_Plan',
-        'วุฒิที่ใช้ในตำแหน่ง -\nสาขาวุฒิบัตรความเชี่ยวชาญ': 'อนุสาขาความเชี่ยวชาญ',
+        'วุฒิที่ใช้กับการเบิก พตส. (FTE) -\nสาขาวุฒิบัตรความเชี่ยวชาญ': 'อนุสาขาความเชี่ยวชาญ',
         'สถานะการปฏิบัติราชการปัจจุบัน': 'Status'
     }
     df_all = df_all.rename(columns=rename_map)
@@ -175,26 +173,24 @@ df_filtered = df[mask]
 # --- 2. การสร้าง KPI Card ---
 kpi_html = f"""
 <div class="kpi-container">
-    <div class="kpi-card"><p class="kpi-title">👨‍⚕️ จำนวนแพทย์</p><p class="kpi-value">{len(df_filtered):,} คน</p></div>
-    <div class="kpi-card"><p class="kpi-title">📋 จำนวนสาขาหลัก</p><p class="kpi-value">{df_filtered['สาขาหลัก'].nunique()} สาขา</p></div>
-    <div class="kpi-card"><p class="kpi-title">🔬 จำนวนอนุสาขาย่อย</p><p class="kpi-value">{df_filtered['อนุสาขาความเชี่ยวชาญ'].nunique()} อนุสาขา</p></div>
-    <div class="kpi-card"><p class="kpi-title">🏥 จำนวนโรงพยาบาล</p><p class="kpi-value">{df_filtered['โรงพยาบาล'].nunique()} แห่ง</p></div>
+    <div class="kpi-card"><p class="kpi-title">👨‍⚕️ จำนวนแพทย์</p><p class="kpi-value">{{len(df_filtered):,}} คน</p></div>
+    <div class="kpi-card"><p class="kpi-title">📋 จำนวนสาขาหลัก</p><p class="kpi-value">{{df_filtered['สาขาหลัก'].nunique()}} สาขา</p></div>
+    <div class="kpi-card"><p class="kpi-title">🔬 จำนวนอนุสาขาย่อย</p><p class="kpi-value">{{df_filtered['อนุสาขาความเชี่ยวชาญ'].nunique()}} อนุสาขา</p></div>
+    <div class="kpi-card"><p class="kpi-title">🏥 จำนวนโรงพยาบาล</p><p class="kpi-value">{{df_filtered['โรงพยาบาล'].nunique()}} แห่ง</p></div>
 </div>
 """
 
-# Theme สีของ Plotly ให้สอดคล้องกับโทนเขียว
 moph_colors = ['#046938', '#1A8B55', '#3BB578', '#63D698', '#90E8BA', '#C2F2D7', '#E6FAF0']
 
 st.title("🏥 Dashboard วิเคราะห์กำลังคนและประเมินความขาดแคลน")
 st.markdown(kpi_html, unsafe_allow_html=True)
 st.markdown("---")
 
-# --- 3. การแสดงผลตาม Tab ที่เลือก (จาก Sidebar) ---
+# --- 3. การแสดงผลตาม Tab ที่เลือก ---
 
 if selected_nav == "ภาพรวม":
     st.subheader("📊 ภาพรวมกำลังคนผู้เชี่ยวชาญ")
 
-    # Section: สรุปจำนวนแพทย์เฉพาะทางตามตัวกรอง
     spec_summary = df_filtered.groupby('สาขาหลัก').size().reset_index(name='จำนวน (คน)')
     spec_summary = spec_summary.sort_values('จำนวน (คน)', ascending=False)
 
@@ -202,20 +198,19 @@ if selected_nav == "ภาพรวม":
         cols = st.columns(min(len(spec_summary), 4))
         for i, row in spec_summary.iterrows():
             col_idx = i % 4
-            cols[col_idx].metric(label=row['สาขาหลัก'], value=f"{row['จำนวน (คน)']} คน")
+            cols[col_idx].metric(label=row['สาขาหลัก'], value=f"{{row['จำนวน (คน)']}} คน")
     else:
         st.info("ไม่พบข้อมูลแพทย์ในเงื่อนไขที่เลือก")
 
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # Charts
     col_chart1, col_chart2 = st.columns(2)
     with col_chart1:
         st.markdown("**จำนวนผู้เชี่ยวชาญจำแนกตาม 7 สาขาหลัก**")
         fig1 = px.bar(spec_summary, x='จำนวน (คน)', y='สาขาหลัก', orientation='h', text='จำนวน (คน)', 
                       color='สาขาหลัก', color_discrete_sequence=moph_colors, template='plotly_white')
         fig1.update_traces(textposition='outside')
-        fig1.update_layout(showlegend=False, yaxis={'categoryorder':'total ascending'})
+        fig1.update_layout(showlegend=False, yaxis={{'categoryorder':'total ascending'}})
         st.plotly_chart(fig1, use_container_width=True)
 
     with col_chart2:
@@ -238,7 +233,6 @@ elif selected_nav == "วิเคราะห์ส่วนขาด":
         req_specs_list = ['อายุรศาสตร์', 'ศัลยกรรมทั่วไป', 'กุมารเวชศาสตร์', 'สูติศาสตร์-นรีเวชวิทยา', 'ออร์โธปิดิกส์', 'เวชศาสตร์ฉุกเฉิน']
         selected_req_specs = st.multiselect("💉 เลือกสาขาเฉพาะทางที่ต้องการวิเคราะห์:", req_specs_list, default=req_specs_list)
 
-    # Use df based on sidebar filters
     gap_mask = df['เขตสุขภาพ'].isin(selected_zone) & df['จังหวัด'].isin(selected_province)
     if selected_hospital: gap_mask &= df['โรงพยาบาล'].isin(selected_hospital)
     if selected_bed: gap_mask &= df['ช่วงจำนวนเตียง'].isin(selected_bed)
@@ -275,7 +269,7 @@ elif selected_nav == "วิเคราะห์ส่วนขาด":
         df_gap_table = df_gap_table.sort_values(by=['ผลต่าง (Gap)', 'เขต', 'จังหวัด'], ascending=[True, True, True])
         def highlight_gap(val):
             color = '#ffe6e6' if val < 0 else '#e6ffe6'
-            return f'background-color: {color}; color: #000;'
+            return f'background-color: {{color}}; color: #000;'
         st.dataframe(df_gap_table.style.map(highlight_gap, subset=['ผลต่าง (Gap)']), use_container_width=True, hide_index=True)
     else:
         st.info("✅ ไม่พบรายการขาดแคลนตามเงื่อนไขที่ท่านเลือก")
@@ -291,26 +285,23 @@ elif selected_nav == "เจาะลึกระดับอนุสาขา"
 
     fig3 = px.bar(sub_count, x='อนุสาขา', y='จำนวน (คน)', text='จำนวน (คน)', 
                   color='อนุสาขา', color_discrete_sequence=moph_colors, template='plotly_white', 
-                  title=f"Top 15 อนุสาขาในสาย {selected_branch}")
+                  title=f"Top 15 อนุสาขาในสาย {{selected_branch}}")
     fig3.update_traces(textposition='outside')
-    fig3.update_layout(showlegend=False, xaxis={'categoryorder':'total descending'})
+    fig3.update_layout(showlegend=False, xaxis={{'categoryorder':'total descending'}})
     st.plotly_chart(fig3, use_container_width=True)
 
     st.markdown("---")
 
     # --- 3.3 การแจกแจง รพ. P+ ---
     st.subheader("🏥 ตรวจสอบความครบถ้วนของอนุสาขา (เฉพาะ รพ. ระดับ P+)")
-    st.caption("ระบบจะดึงข้อมูลอนุสาขาที่มีอยู่ใน รพ. ระดับ P+ ทั้งหมดทั่วประเทศ มาเป็นฐานเกณฑ์เพื่อเปรียบเทียบว่า รพ. P+ แห่งใดที่ยังขาดอนุสาขาใดอยู่บ้าง")
+    st.caption("อ้างอิงจากคอลัมน์ วุฒิที่ใช้กับการเบิก พตส. (FTE) เพื่อความแม่นยำในการปฏิบัติงานจริง")
 
-    # ใช้ฐานข้อมูลทั้งหมดในการหา Master Set ของ P+
     df_p_plus = df[df['SAP_Level'] == 'P+']
 
     if not df_p_plus.empty:
-        # หาอนุสาขาทั้งหมดที่มีใน P+ ทั่วประเทศ (ตัด "ไม่ระบุ" และ "สาขาหลัก" ออก)
         master_subs = df_p_plus[(df_p_plus['อนุสาขาความเชี่ยวชาญ'] != 'ไม่ระบุ') & 
                                 (~df_p_plus['อนุสาขาความเชี่ยวชาญ'].str.startswith('สาขา', na=False))][['สาขาหลัก', 'อนุสาขาความเชี่ยวชาญ']].drop_duplicates()
 
-        # กรองรายการ รพ. P+ ให้สัมพันธ์กับพื้นที่ที่ผู้ใช้ Filter ไว้ที่ Sidebar (เพื่อให้หาชื่อ รพ. ง่ายขึ้น)
         filtered_p_hosp_list = sorted(df_filtered[df_filtered['SAP_Level'] == 'P+']['โรงพยาบาล'].dropna().unique())
 
         if len(filtered_p_hosp_list) == 0:
@@ -319,24 +310,21 @@ elif selected_nav == "เจาะลึกระดับอนุสาขา"
             target_p_hosp = st.selectbox("เลือกโรงพยาบาลระดับ P+ เพื่อตรวจสอบส่วนขาด:", ["-- กรุณาเลือก --"] + filtered_p_hosp_list)
 
             if target_p_hosp != "-- กรุณาเลือก --":
-                # หาอนุสาขาที่ รพ. แห่งนี้มี
                 hosp_subs = df_p_plus[(df_p_plus['โรงพยาบาล'] == target_p_hosp) & 
                                       (df_p_plus['อนุสาขาความเชี่ยวชาญ'] != 'ไม่ระบุ')]['อนุสาขาความเชี่ยวชาญ'].unique()
 
-                # เปรียบเทียบหาตัวที่ขาด
                 missing_mask = ~master_subs['อนุสาขาความเชี่ยวชาญ'].isin(hosp_subs)
                 missing_subs = master_subs[missing_mask].sort_values(['สาขาหลัก', 'อนุสาขาความเชี่ยวชาญ'])
 
                 if missing_subs.empty:
-                    st.success(f"🎉 **{target_p_hosp}** มีอนุสาขาครบถ้วนสมบูรณ์ เทียบเท่ากับมาตรฐาน รพ. P+ ทั่วประเทศ")
+                    st.success(f"🎉 **{{target_p_hosp}}** มีอนุสาขาครบถ้วนสมบูรณ์ เทียบเท่ากับมาตรฐาน รพ. P+ ทั่วประเทศ")
                 else:
-                    st.warning(f"⚠️ **{target_p_hosp}** ขาดอนุสาขาจำนวน {len(missing_subs)} สาขา (เมื่อเทียบกับ รพ. P+ ทั้งประเทศ)")
+                    st.warning(f"⚠️ **{{target_p_hosp}}** ขาดอนุสาขาจำนวน {{len(missing_subs)}} สาขา (เมื่อเทียบกับ รพ. P+ ทั้งประเทศ)")
 
-                    # แบ่ง 2 คอลัมน์เพื่อแสดงตารางให้ดูง่าย
                     col_p1, col_p2 = st.columns([2, 1])
                     with col_p1:
                         st.dataframe(
-                            missing_subs.rename(columns={'สาขาหลัก': 'อยู่ในสายงาน (สาขาหลัก)', 'อนุสาขาความเชี่ยวชาญ': 'อนุสาขาที่ขาดหายไป'}),
+                            missing_subs.rename(columns={{'สาขาหลัก': 'อยู่ในสายงาน (สาขาหลัก)', 'อนุสาขาความเชี่ยวชาญ': 'อนุสาขาที่ขาดหายไป'}}),
                             hide_index=True, use_container_width=True
                         )
     else:
